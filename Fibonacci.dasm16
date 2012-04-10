@@ -6,7 +6,7 @@
 :in ;label for start, if we wanted to loop we could change line XX to set pc, in
       SET a, 0 ;Fibonacci seed 1
       SET b, 1 ;Fibonacci seed 2
-      SET x, 10 ; Sequence limit
+      SET x, 15 ; Sequence limit
       set j, 0x8001 ; set j to the start of the VRAM (i.e. the console, any
                     ; value stored above 0x8000 and below 0x8180  will be shown
                     ; on the console)
@@ -37,13 +37,11 @@
 
 :F_END ; end of loop label
 
-
-
-:halt ; see line XX
-set pc, halt ; see line XX
+:halt ; see line 41
+set pc, halt ; see line 40
 
 :printNum
-         set push, z ; minimise side effects of function, push the state of the
+         set push, z ; minimise side effects of the function, push the state of the
                      ; z register onto the stack as we manipulate this register
                      ; in this 'function', we must set it back to its original
                      ; state when the 'function' completes
@@ -62,7 +60,7 @@ set pc, halt ; see line XX
              jsr twoNum ; print 2 digit number (there isn't a character for 87,
                         ; but there is one for 8 and one for 7)
          ife z, 3
-             ;TODO
+             jsr threeNum
 
          set [j], 0x7020 ; print a space after the number
          add j, 1; increment cursor position
@@ -114,5 +112,35 @@ set pc, halt ; see line XX
 	set a, pop
         set pc, pop
 
+:threeNum
+	set push, a
+	set push, b
+        set push, c
+	set push, x
+	set push, y ;save state
+
+	set b, a ; keep a copy of a
+	div a, 100 ;
+	set y, a
+	mul y, 100 ;
+	sub b, y
+        set c, b
+        div b, 10
+        set x, b
+        mul x, 10
+        sub c, x
+
+        jsr printInt ;print individual ints
+        set a, b
+        jsr printInt
+        set a, c
+        jsr printInt
+
+	set y, pop ; reset state
+	set x, pop
+        set c, pop
+	set b, pop
+	set a, pop
+        set pc, pop
 
 
