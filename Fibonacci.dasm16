@@ -1,0 +1,118 @@
+;--- Really simple Fibonacci sequence for DCPU-16 ---
+
+;Tested on DCPU-Studio
+; --- Boris (jf) ---
+
+:in ;label for start, if we wanted to loop we could change line XX to set pc, in
+      SET a, 0 ;Fibonacci seed 1
+      SET b, 1 ;Fibonacci seed 2
+      SET x, 10 ; Sequence limit
+      set j, 0x8001 ; set j to the start of the VRAM (i.e. the console, any
+                    ; value stored above 0x8000 and below 0x8180  will be shown
+                    ; on the console)
+      jsr printNum
+      set push, a
+      set a, b
+      jsr printNum
+      set a, pop
+
+:F_START ; Start label for Fibonacci loop
+	IFE X, 0 ; if we have reached the sequence limit
+		SET PC, F_END ; break the loop
+
+	SET C, A ; set the C register to A
+	ADD C, B ; add b to c (effectively add b to a)
+
+	SET A, B
+	SET B, C ; set a to b and b to c, move on to the next set of numbers in
+	         ; the sequence SET PUSH, C ; push the result on to the stack
+
+        set push, a ; the print num function was written to print register a
+        set a, c ; rather than change the function, its easier to set a to what
+        jsr printNum ; we want to print, and then set it back to what it
+        set a, pop ; was before we printed, using the stack
+
+	SUB X, 1 ; subtract 1 from limit
+	SET PC, F_START ; loop to start
+
+:F_END ; end of loop label
+
+
+
+:halt ; see line XX
+set pc, halt ; see line XX
+
+:printNum
+         set push, z ; minimise side effects of function, push the state of the
+                     ; z register onto the stack as we manipulate this register
+                     ; in this 'function', we must set it back to its original
+                     ; state when the 'function' completes
+
+         set z, 1 ; set z to 1, the default length of number i.e a number < 10
+
+         ifg a, 9 ; a > 9 then it is at least 2 digit number, set z to 2
+             set z, 2
+         ifg a, 99 ; if a > 99 then it is a 3 digit number, set z to 3
+             set z, 3
+
+
+         ife z, 1 ; if 1 digit number, print 1 digit number
+             jsr printInt
+         ife z, 2
+             jsr twoNum ; print 2 digit number (there isn't a character for 87,
+                        ; but there is one for 8 and one for 7)
+         ife z, 3
+             ;TODO
+
+         set [j], 0x7020 ; print a space after the number
+         add j, 1; increment cursor position
+         set z, pop ; reset the state of the z register
+         set pc, pop ; return to where the 'function' was called (the instruction
+                     ; after jsr printNum)
+
+
+:printInt
+         set push, a  ; save state of a
+         add a, 0x2030 ; The VRAM takes 16 bits per 'character'or cell, the high
+                       ; 8 bits (the the first 2 hex digits, 20) are used for
+                       ; the color of the character and the lowest 8 bits are
+                       ; used for the character its self.
+                       ; the hex, 20 represent the foreground color (2) and the
+                       ; background color (0). In this case it is green on a
+                       ; blank background.
+                       ; The low 8 bits represent the ascii character, we have
+                       ; it set to 30, which is the hex for the character "0"
+                       ; we then add the number we want to print to this, to get
+                       ; the required character i.e. 7 + 2030 = 2037, 37 is is
+                       ; "7" in ascii. Therefore the word 2037 represents a
+                       ; green 7 on a blank background
+
+         set [j], a ; set the value of the register at j (VRAM) to a
+         add j, 1 ; move to next element in VRAM
+         set a, pop ; reset state
+         set pc, pop
+
+:twoNum
+	set push, a
+	set push, b
+	set push, x
+	set push, y ;save state
+
+	set b, a ; keep a copy of a
+	div a, 10 ; a / 10 (73 / 10 = 7) get the first number
+	set y, a
+	mul y, 10 ; (7 * 10 = 70, 73 - 70 = 3 i.e. the second number)
+	sub b, y
+
+        jsr printInt ;print individual ints
+        set a, b
+        jsr printInt
+
+	set y, pop ; reset state
+	set x, pop
+	set b, pop
+	set a, pop
+        set pc, pop
+
+
+
